@@ -122,7 +122,8 @@
     "actual": "sum of all execution minutes for those tasks",
     "difference": "actual - estimate",
     "empty": "all seven metrics are zero",
-    "drilldown": "count and time metrics open their underlying task and/or execution records"
+    "drilldown": "count and time metrics open their underlying task and/or execution records",
+    "play_minutes": "Supplementary union of execution start/end intervals for selected tasks, rounded to minutes; does not replace required actual=sum(record minutes) or difference."
   },
   "sort": {
     "due": "due_date ASC, created_at ASC, id ASC",
