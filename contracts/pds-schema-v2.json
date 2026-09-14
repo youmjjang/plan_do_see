@@ -156,5 +156,6 @@
     "ids": "daily-routine-YYYY-MM-DD plan and five stable task IDs",
     "repeat": "INSERT OR IGNORE keeps existing edits, completion and deleted state; different date has independent tasks",
     "estimates": "Suggested minutes, editable; no execution is generated"
-  }
+  },
+  "execution_edit": "Updates time, derived minutes, note and blocked reason in place; original field comparison prevents stale overwrite. Record ID, task link, completion key, completion state and planned estimates remain unchanged. Aggregates use corrected values."
 }

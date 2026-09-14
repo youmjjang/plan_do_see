@@ -33,7 +33,14 @@ export async function POST(request:Request){
  await db.prepare('UPDATE tasks SET deleted_at=? WHERE id=? AND deleted_at IS NULL').bind(now,id.parse(input.id)).run();
  }else if(op==='task-reopen'){
  await db.prepare("UPDATE tasks SET status='open',cycle=cycle+1 WHERE id=? AND status='done' AND deleted_at IS NULL").bind(id.parse(input.id)).run();
+  }else if(op==='execution-edit'){
+ const fields=z.object({start_at:z.string().datetime(),end_at:z.string().datetime(),blocked:z.string().max(1000),note:z.string().max(2000)});
+ const e=fields.extend({id,original:fields}).parse(input.value),minutes=Math.round((Date.parse(e.end_at)-Date.parse(e.start_at))/60000);
+ if(minutes<1||minutes>100000)throw new Error('invalid');
+ const r=await db.prepare('UPDATE executions SET start_at=?,end_at=?,minutes=?,blocked=?,note=? WHERE id=? AND start_at=? AND end_at=? AND blocked=? AND note=?').bind(e.start_at,e.end_at,minutes,e.blocked,e.note,e.id,e.original.start_at,e.original.end_at,e.original.blocked,e.original.note).run();
+ if(!r.meta.changes)return Response.json({error:'기록'+'이 다른 곳에서 수정됐어요. 창을 닫고 저장된 자료를 다시 확인한 뒤 수정해 주세요.'},{status:409});
  }else if(op==='execution'){
+
  const e=log.parse(input.value),minutes=Math.round((Date.parse(e.end_at)-Date.parse(e.start_at))/60000);if(minutes<1||minutes>100000)throw new Error('invalid');
  const key=e.complete?e.task_id+':'+e.cycle:null;
  const conditions=e.complete?" AND status='open' AND cycle=?":"";
@@ -48,4 +55,5 @@ export async function POST(request:Request){
  return Response.json(await snapshot(),{headers});
  }catch(error){const invalid=error instanceof z.ZodError||(error instanceof Error&&error.message==='invalid');return Response.json({error:invalid?'날짜, 시간, 필수 항목을 확인해 주세요.':'저장하지 못했어요. 입력 내용은 그대로 있으니 잠시 뒤 다시 시도해 주세요.'},{status:invalid?400:503,headers})}
 }
+
 
