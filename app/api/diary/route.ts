@@ -1,3 +1,4 @@
+import {dailyTasks} from '../../../lib/routine';
 import {z} from 'zod';
 import {database} from '../../../lib/server-db';
 const str=z.string().trim().min(1).max(1000),id=z.string().min(1).max(100),date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,'날짜를 확인해 주세요');
@@ -16,7 +17,12 @@ export async function POST(request:Request){
  const titles=['새 위치와 두 가게 배치 정하기','옮길 곳 주변 정리하기','너굴상점·옷가게 이전 진행하기','길과 작은 광장 꾸미기','가구·가로등·울타리 배치하기','직접 걸어 보고 동선 다듬기'];
  const p={id:'island-shopping-street',title:'유럽·모던풍 상점가 꾸미기',start_date:'2026-09-19',end_date:'2026-09-27',priority:2,success:'두 가게를 오가기 편하고, 섬 입구·박물관과 분위기가 이어지는 상점가 완성',estimate:480,improvement:'',version:1,created_at:now};
  await db.batch([db.prepare('INSERT OR IGNORE INTO plans (id,title,start_date,end_date,priority,success,estimate,improvement,version,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(...Object.values(p)),db.prepare('INSERT OR IGNORE INTO plan_revisions (id,plan_id,version,snapshot,created_at) VALUES (?,?,?,?,?)').bind('initial-plan',p.id,1,JSON.stringify(p),now),...titles.map((title,i)=>db.prepare('INSERT OR IGNORE INTO tasks (id,plan_id,title,due_date,priority,tags,estimate,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(`island-task-${i+1}`,p.id,title,i<3?'2026-09-20':'2026-09-27',2,i<3?'이번 주말':'다음 주말',[60,60,120,90,90,60][i],now))]);
+  }else if(op==='daily-routine'){
+ const day=date.parse(input.date),pid='daily-routine-'+day;
+ const p={id:pid,title:day+' · 매일 섬 루틴',start_date:day,end_date:day,priority:2,success:'플레이한 날의 다섯 가지 루틴을 확인하고 실제로 한 일을 기록하기',estimate:dailyTasks.reduce((n,t)=>n+t.estimate,0),improvement:'',version:1,created_at:now};
+ await db.batch([db.prepare('INSERT OR IGNORE INTO plans (id,title,start_date,end_date,priority,success,estimate,improvement,version,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(...Object.values(p)),db.prepare('INSERT OR IGNORE INTO plan_revisions (id,plan_id,version,snapshot,created_at) VALUES (?,?,?,?,?)').bind(pid+':1',pid,1,JSON.stringify(p),now),...dailyTasks.map((t,i)=>db.prepare('INSERT OR IGNORE INTO tasks (id,plan_id,title,due_date,priority,tags,estimate,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(pid+'-'+(i+1),pid,t.title,day,2,'매일 루틴',t.estimate,now))]);
  }else if(op==='plan-create'){
+
  const p=plan.parse(input.value);await db.batch([db.prepare('INSERT INTO plans (id,title,start_date,end_date,priority,success,estimate,improvement,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(p.id,p.title,p.start_date,p.end_date,p.priority,p.success,p.estimate,p.improvement,now),db.prepare('INSERT INTO plan_revisions (id,plan_id,version,snapshot,created_at) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),p.id,1,JSON.stringify({...p,version:1}),now)]);
  }else if(op==='plan-edit'){
  const p=plan.parse(input.value);const result=await db.batch([db.prepare('UPDATE plans SET title=?,start_date=?,end_date=?,priority=?,success=?,estimate=?,improvement=?,version=version+1 WHERE id=? AND version=?').bind(p.title,p.start_date,p.end_date,p.priority,p.success,p.estimate,p.improvement,p.id,p.version??0),db.prepare('INSERT OR IGNORE INTO plan_revisions (id,plan_id,version,snapshot,created_at) SELECT ?,id,version,json_object(\'title\',title,\'start_date\',start_date,\'end_date\',end_date,\'priority\',priority,\'success\',success,\'estimate\',estimate,\'improvement\',improvement),? FROM plans WHERE id=?').bind(crypto.randomUUID(),now,p.id)]);if(!result[0].meta.changes)return Response.json({error:'다른 수정이 먼저 저장됐어요. 창을 닫고 새로고침한 뒤 다시 수정해 주세요.'},{status:409});
