@@ -9,13 +9,19 @@ export async function POST(r:Request){try{const user=await requireUser(r),b=awai
 if(b.action==='start'){
 const config=configSchema.parse(b.config);if(data.setup)throw new HttpError(409,'시작할 때 정한 관찰 기준은 고정되어 있어요.');const saved=await db.prepare("INSERT INTO observations (user_id,config,created_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET config=excluded.config,created_at=excluded.created_at,change=NULL WHERE json_extract(observations.config,'$.draft')=1 AND NOT EXISTS (SELECT 1 FROM observation_days WHERE user_id=excluded.user_id)").bind(user.id,JSON.stringify(config),now).run();if(!saved.meta.changes)throw new HttpError(409,'관찰 기준이 이미 저장됐어요. 저장된 기준을 다시 확인해 주세요.');
 }else if(b.action==='reset'){
-if(!data.setup||data.days.length)throw new HttpError(409,'입력 내용 초기화는 첫 기록을 저장하기 전에만 할 수 있어요.');
-const saved=await db.prepare('UPDATE observations SET config=?,change=NULL WHERE user_id=? AND NOT EXISTS (SELECT 1 FROM observation_days WHERE user_id=?)').bind(JSON.stringify({draft:true,previous:data.setup.config}),user.id,user.id).run();
-if(!saved.meta.changes)throw new HttpError(409,'기록이 생겨 초기화하지 못했어요.');
+if(!data.setup)throw new HttpError(409,'이미 초기화되어 있어요.');
+const draft={draft:true,resetId:crypto.randomUUID(),previous:data.setup.config,previousDays:data.days,previousChange:data.setup.change,previousCreatedAt:data.setup.created_at};
+const result=await db.batch([
+ db.prepare('UPDATE observations SET config=?,change=NULL WHERE user_id=? AND config=? AND (SELECT count(*) FROM observation_days WHERE user_id=?)=?').bind(JSON.stringify(draft),user.id,JSON.stringify(data.setup.config),user.id,data.days.length),
+ db.prepare("DELETE FROM observation_days WHERE user_id=? AND EXISTS (SELECT 1 FROM observations WHERE user_id=? AND json_extract(config,'$.resetId')=?)").bind(user.id,user.id,draft.resetId)
+]);
+if(!result[0].meta.changes)throw new HttpError(409,'관찰 내용이 변경됐어요. 새로고침 후 다시 눌러 주세요.');
 }else if(b.action==='restore'){
 const raw=await db.prepare('SELECT config FROM observations WHERE user_id=?').bind(user.id).first<any>();const draft=raw?JSON.parse(raw.config):null;
 if(!draft?.draft||data.days.length)throw new HttpError(409,'되돌릴 초기화 내용이 없어요.');
-await db.prepare("UPDATE observations SET config=? WHERE user_id=? AND json_extract(config,'$.draft')=1 AND NOT EXISTS (SELECT 1 FROM observation_days WHERE user_id=?)").bind(JSON.stringify(draft.previous),user.id,user.id).run();
+const rows=(draft.previousDays||[]).map((d:any)=>db.prepare("INSERT OR IGNORE INTO observation_days (id,user_id,day,value,note,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM observations WHERE user_id=? AND config=?)").bind(d.id,user.id,d.day,d.value,d.note,d.created_at,user.id,raw.config));
+rows.push(db.prepare('UPDATE observations SET config=?,change=?,created_at=? WHERE user_id=? AND config=?').bind(JSON.stringify(draft.previous),draft.previousChange?JSON.stringify(draft.previousChange):null,draft.previousCreatedAt||now,user.id,raw.config));
+await db.batch(rows);
 }else if(b.action==='day'){
 
 if(!data.setup)throw new HttpError(409,'먼저 관찰 질문과 규칙을 정해 주세요.');
