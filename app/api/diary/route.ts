@@ -32,10 +32,15 @@ export async function POST(request:Request){
  if(op==='bootstrap'){
  // Compatibility: reading no longer creates sample records.
  }else if(op==='daily-routine'){
- const day=date.parse(input.date),pid=id.parse(input.plan_id);
- await owned(user.id,'plan',pid);
+ const day=date.parse(input.date);
+ const existing=await db.prepare("SELECT id FROM plans WHERE owner_id=? AND (id LIKE '%daily-routine%' OR title LIKE '%매일 섬 루틴%' OR title='데일리 계획') ORDER BY created_at,id LIMIT 1").bind(user.id).first<{id:string}>();
+ const pid=existing?.id||user.id+':daily-routine';
  const prefix='routine-'+await digest(user.id+':'+pid+':'+day);
- await db.batch(dailyTasks.map((t,i)=>db.prepare('INSERT OR IGNORE INTO tasks (id,plan_id,title,due_date,priority,tags,estimate,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(prefix+':'+i,pid,t.title,day,2,'매일 루틴',t.estimate,now)));
+ const tasksForDay=await db.prepare('SELECT id FROM tasks WHERE plan_id=? AND due_date=? AND tags=? LIMIT 1').bind(pid,day,'매일 루틴').first();
+ const statements=[];
+ if(!existing){const p={id:pid,title:'매일 섬 루틴',start_date:day,end_date:day,priority:2,success:'플레이한 날의 루틴을 기록하기',estimate:45,improvement:'',version:1};statements.push(db.prepare('INSERT OR IGNORE INTO plans (owner_id,id,title,start_date,end_date,priority,success,estimate,improvement,version,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(user.id,pid,p.title,day,day,2,p.success,45,'',1,now),db.prepare('INSERT OR IGNORE INTO plan_revisions (id,plan_id,version,snapshot,created_at) VALUES (?,?,?,?,?)').bind(pid+':1',pid,1,JSON.stringify(p),now));}
+ if(!tasksForDay)statements.push(...dailyTasks.map((t,i)=>db.prepare('INSERT OR IGNORE INTO tasks (id,plan_id,title,due_date,priority,tags,estimate,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(prefix+':'+i,pid,t.title,day,2,'매일 루틴',t.estimate,now)));
+ if(statements.length)await db.batch(statements);
  }else if(op==='plan-create'){
 
  const p=plan.parse(input.value);await db.batch([db.prepare('INSERT INTO plans (owner_id,id,title,start_date,end_date,priority,success,estimate,improvement,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(user.id,p.id,p.title,p.start_date,p.end_date,p.priority,p.success,p.estimate,p.improvement,now),db.prepare('INSERT INTO plan_revisions (id,plan_id,version,snapshot,created_at) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),p.id,1,JSON.stringify({...p,version:1}),now)]);
