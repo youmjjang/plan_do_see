@@ -34,7 +34,7 @@ export async function POST(request:Request){try{
  await db.batch([
  ...['completions','executions'].map(t=>db.prepare(`DELETE FROM ${t} WHERE task_id IN (${taskIds})`).bind(user.id)),
  ...['reviews','plan_revisions','tasks'].map(t=>db.prepare(`DELETE FROM ${t} WHERE plan_id IN (${planIds})`).bind(user.id)),
- db.prepare('DELETE FROM plans WHERE owner_id=?').bind(user.id),db.prepare('DELETE FROM observation_days WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM observations WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM auth_sessions WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM auth_users WHERE id=?').bind(user.id)]);
+ db.prepare('DELETE FROM plans WHERE owner_id=?').bind(user.id),db.prepare('DELETE FROM observation_days WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM observations WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM auth_sessions WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM profile_photos WHERE user_id=?').bind(user.id),db.prepare('DELETE FROM auth_users WHERE id=?').bind(user.id)]);
  return reply({ok:true},200,{'Set-Cookie':cookie(request,'',0)});
  }
  throw new HttpError(400,'지원하지 않는 요청이에요.');

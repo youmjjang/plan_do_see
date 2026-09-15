@@ -11,3 +11,5 @@ export const authSessions=sqliteTable('auth_sessions',{tokenHash:text('token_has
 export const authAttempts=sqliteTable('auth_attempts',{id:text('id').primaryKey(),count:integer('count').notNull()});
 export const observations=sqliteTable('observations',{userId:text('user_id').primaryKey().references(()=>authUsers.id),config:text('config').notNull(),createdAt:text('created_at').notNull(),change:text('change')});
 export const observationDays=sqliteTable('observation_days',{id:text('id').primaryKey(),userId:text('user_id').notNull().references(()=>authUsers.id),day:text('day').notNull(),value:integer('value').notNull(),note:text('note').notNull(),createdAt:text('created_at').notNull()},t=>[uniqueIndex('observation_user_day').on(t.userId,t.day)]);
+
+export const profilePhotos=sqliteTable('profile_photos',{userId:text('user_id').primaryKey().references(()=>authUsers.id),data:text('data').notNull(),mime:text('mime').notNull(),updatedAt:text('updated_at').notNull()});

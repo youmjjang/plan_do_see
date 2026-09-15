@@ -22,3 +22,5 @@
 .observation-panel .account-content h2{font-size:20px}.observation-rules{border-top:1px solid #d7e3dd;padding-top:16px}.observation-rules>summary{font-size:14px;color:#456256}.observation-rules[open]{display:grid;gap:14px}.observation-rules textarea{min-height:64px}
 
 .observation-panel select{width:100%;padding:12px;border:1px solid #a4b7b0;border-radius:10px;background:white;font:inherit}
+
+.profile-photo{text-align:center;min-width:0}.welcome .profile-photo img{display:block;width:100%;height:auto;max-height:180px;object-fit:contain;border:0;border-radius:12px}.profile-photo-empty{min-height:112px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;border:1px dashed #9bb6a9;border-radius:12px;color:#456256}.photo-upload{position:relative;display:inline-block;padding:8px 12px;margin-top:8px;border:1px solid #a4b7b0;border-radius:8px;cursor:pointer;background:white}.photo-upload input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.photo-upload:focus-within{outline:2px solid #245c4d}.profile-photo small{display:block;margin-top:6px;font-size:13px}.profile-photo p{font-size:14px}
