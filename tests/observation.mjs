@@ -1,0 +1,18 @@
+// Local test database only. Synthetic dates test ordering; these are NOT the user's five-day evidence.
+import fs from 'node:fs';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';
+const base='http://localhost:5173',password=crypto.randomUUID(),username='obs_'+Date.now().toString(36),records=[];let cookie='';
+async function call(path,body,status=200){const r=await fetch(base+path,{method:body?'POST':'GET',headers:{Origin:base,'Content-Type':'application/json',Cookie:cookie},body:body?JSON.stringify(body):undefined});const data=await r.json();records.push({path,action:body?.action,status:r.status});assert.equal(r.status,status,JSON.stringify(data));if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return data}
+await call('/api/auth',{action:'signup',username,password},201);
+const files=fs.readdirSync('.wrangler/state/v3/d1/miniflare-D1DatabaseObject').filter(s=>s.endsWith('.sqlite')&&s!=='metadata.sqlite');const db=new DatabaseSync('.wrangler/state/v3/d1/miniflare-D1DatabaseObject/'+files[0]);const user=db.prepare('SELECT id FROM auth_users WHERE username=?').get(username);
+const config={question:'검증 전용 질문',metric:'완료한 계획 항목 수',unit:'개',rule:'검증 규칙 5개',calculation:'그날 완료한 항목의 수를 정수로 기록. 같은 항목은 하루 한 번만 계산.',missing:'누락 제외',duplicate:'하루 한 번',outlier:'실제 값 유지',rounding:'평균 소수 둘째 자리',weekStart:'월요일'};
+await call('/api/observation',{action:'day',value:2,note:'검증'},409);await call('/api/observation',{action:'start',config});await call('/api/observation',{action:'start',config},409);
+await call('/api/observation',{action:'change',rule:'검증 규칙 3개',reason:'검증'},409);
+await call('/api/observation',{action:'day',value:2,note:'검증 1'});await call('/api/observation',{action:'day',value:2,note:'중복'},409);
+db.prepare('UPDATE observation_days SET day=? WHERE user_id=?').run('2000-01-01',user.id);
+await call('/api/observation',{action:'day',value:4,note:'검증 2'});db.prepare('UPDATE observation_days SET day=? WHERE user_id=? AND day<>?').run('2000-01-02',user.id,'2000-01-01');
+await call('/api/observation',{action:'day',value:3,note:'규칙 변경 전'},409);await call('/api/observation',{action:'change',rule:'검증 규칙 3개',reason:'검증 1·2일차의 값 2와 4를 보고 변경'});
+for(let i=3;i<=5;i++){await call('/api/observation',{action:'day',value:i,note:'검증 '+i});db.prepare("UPDATE observation_days SET day=? WHERE user_id=? AND day NOT LIKE '2000-%'").run('2000-01-0'+i,user.id)}
+await call('/api/observation',{action:'day',value:6,note:'6일차 거절'},409);await call('/api/observation',{action:'change',rule:'두 번째 변경',reason:'검증'},409);
+const data=await call('/api/observation');assert.equal(data.sum,18);assert.equal(data.average,3.6);assert.equal(data.before,3);assert.equal(data.after,4);assert.equal(data.setup.change.based_on.length,2);
+const oldCookie=cookie;db.prepare('UPDATE auth_sessions SET expires_at=? WHERE user_id=?').run('2000-01-01T00:00:00.000Z',user.id);await call('/api/diary',undefined,401);await call('/api/auth',{action:'login',username,password});await call('/api/auth',{action:'delete',currentPassword:password});assert.equal(db.prepare('SELECT count(*) n FROM observations WHERE user_id=?').get(user.id).n,0);assert.equal(db.prepare('SELECT count(*) n FROM observation_days WHERE user_id=?').get(user.id).n,0);db.close();
+fs.writeFileSync('work/t07-evidence/observation-tests.json',JSON.stringify({note:'LOCAL SYNTHETIC TEST ONLY: dates altered in local DB. Not real five-day usage evidence.',checks:records,arithmetic:{values:[2,4,3,4,5],sum:18,average:3.6,before:3,after:4},expiredSessionRejected:true,deletedAccountHasNoObservationRows:true},null,2));console.log('PASS: '+records.length+' observation and expiry checks; synthetic local data removed.');
