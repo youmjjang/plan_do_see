@@ -1,3 +1,4 @@
+import {organizeRoutines} from '../../../lib/organize-routines';
 import {requireUser,HttpError,failure,jsonBody,reply,digest} from '../../../lib/auth';
 import {dailyTasks} from '../../../lib/routine';
 import {z} from 'zod';
@@ -8,7 +9,7 @@ const task=z.object({id,plan_id:id,title:str,due_date:date,priority:z.number().i
 const log=z.object({id,task_id:id,start_at:z.string().datetime(),end_at:z.string().datetime(),blocked:z.string().max(1000),note:z.string().max(2000),complete:z.boolean(),cycle:z.number().int().min(0)}).refine(e=>Date.parse(e.end_at)>Date.parse(e.start_at),'끝난 시각은 시작 시각보다 뒤여야 해요');
 const headers={'Cache-Control':'no-store'};
 export async function snapshot(userId:string){const db=database();const names=['plans','tasks','executions','plan_revisions','completions','reviews'];const queries=[
- 'SELECT * FROM plans WHERE owner_id=?',
+ 'SELECT * FROM plans WHERE owner_id=? AND merged_into IS NULL',
  'SELECT t.* FROM tasks t JOIN plans p ON p.id=t.plan_id WHERE p.owner_id=?',
  'SELECT e.* FROM executions e JOIN tasks t ON t.id=e.task_id JOIN plans p ON p.id=t.plan_id WHERE p.owner_id=?',
  'SELECT r.* FROM plan_revisions r JOIN plans p ON p.id=r.plan_id WHERE p.owner_id=?',
@@ -31,9 +32,12 @@ export async function POST(request:Request){
  if(op==='execution-edit')await owned(user.id,'execution',id.parse(v?.id));
  if(op==='bootstrap'){
  // Compatibility: reading no longer creates sample records.
+ }else if(op==='routine-organize'){
+ await organizeRoutines(user.id);
  }else if(op==='daily-routine'){
+ await organizeRoutines(user.id);
  const day=date.parse(input.date);
- const existing=await db.prepare("SELECT id FROM plans WHERE owner_id=? AND (id LIKE '%daily-routine%' OR title LIKE '%매일 섬 루틴%' OR title='데일리 계획') ORDER BY created_at,id LIMIT 1").bind(user.id).first<{id:string}>();
+ const existing=await db.prepare("SELECT id FROM plans WHERE owner_id=? AND merged_into IS NULL AND (id LIKE '%daily-routine%' OR title LIKE '%매일 섬 루틴%' OR title='데일리 계획') ORDER BY created_at,id LIMIT 1").bind(user.id).first<{id:string}>();
  const pid=existing?.id||user.id+':daily-routine';
  const prefix='routine-'+await digest(user.id+':'+pid+':'+day);
  const tasksForDay=await db.prepare('SELECT id FROM tasks WHERE plan_id=? AND due_date=? AND tags=? LIMIT 1').bind(pid,day,'매일 루틴').first();
