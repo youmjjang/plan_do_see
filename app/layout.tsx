@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "큐티스트릿도 다이어리",
-  description: "유미의 주말 섬 꾸미기 — 계획, 플레이 기록, 돌아보기",
+  description: "나만의 계획, 할 일, 실행 기록과 돌아보기를 관리하는 개인 다이어리",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
