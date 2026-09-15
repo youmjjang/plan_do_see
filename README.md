@@ -1,28 +1,40 @@
-# 큐티스트릿도 다이어리
+# 큐티스트릿도 다이어리 · T07
 
-동물의 숲 상점가 꾸미기를 위한 Plan → Do → See 앱입니다.
+동물의 숲 테마의 Plan → Do → See 앱. 회원가입 후 자신의 계획·실행·회고만 조회하고 수정할 수 있습니다.
 
-- React / Vinext, Cloudflare Workers, 서버 D1 데이터베이스
-- 로그인 없이 읽기·쓰기, 공개 안내 표시
-- 최초 계획·수정 이력, 할 일 CRUD·검색·필터·정렬
-- 별도 실행 기록, 원자적 완료 처리와 데이터베이스 중복 제약
-- 서울 날짜 기준 집계와 근거 기록, 다음 계획으로 회고 전달
-- 전체 자료 JSON 내보내기, 공개 소스 화면
+- [앱 열기](https://cutie-street-island-diary.youmnana19.chatgpt.site/)
+- [인증 구현 설명서](T07-AUTH.md) · [제출 안내](SUBMISSION.md)
+- React/Vinext, Cloudflare Workers, 서버 D1 데이터베이스
+- bcrypt 비밀번호 해시, 12시간 서버 세션, 로그아웃·비밀번호 변경 시 기존 세션 폐기
+- 모든 자료 API에서 로그인 및 소유권 검사, 내 자료만 JSON 내보내기
+- 기존 계획·할 일·실행 기록·회고 기능 유지
+- 5일 관찰 입력, 2일차 뒤 계획 규칙 1회 변경, 변경 전후 같은 지표 비교
+
+**실제 5일 사용 기록은 이번 구현 범위에서 제외했습니다.** 관찰 기능은 준비되어 있지만 사용 기록을 자동으로 채우지 않습니다. 검증용 값은 임시 로컬 DB에서만 사용하고 삭제합니다.
 
 ## 실행
 
-Node.js 22.13 이상과 npm을 사용합니다. `npm run install:ci`로 잠금 파일의 의존성을 설치합니다. `npm run build` 뒤 아래 명령으로 로컬 데이터베이스에 마이그레이션을 적용하고 `npm run dev`를 실행합니다.
+Node.js 22.13 이상이 필요합니다. 검증 스크립트는 `node:sqlite`를 사용합니다.
 
+```sh
+npm run install:ci
+npm run build
 ```
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_same_multiple_man.sql
+
+개발용 DB가 필요한 경우 `drizzle/*.sql`을 파일 이름 순서대로 로컬 D1에 적용하고 `npm run dev`로 실행합니다. 실제 DB의 기존 마이그레이션을 다시 적용하지 마세요.
+
+## 검증 재현
+
+새 체크아웃에서 위 설치·빌드 후 실행합니다.
+
+```sh
+node --experimental-strip-types tests/verify-t07.mjs
 ```
 
-운영 환경은 Sites의 논리적 `DB` 바인딩을 사용합니다. 브라우저에 DB 비밀키를 전달하지 않습니다. `.env`, `.wrangler`, 작업 파일은 Git에 넣지 않습니다.
+빌드된 Worker에 요청을 보내 비로그인 차단, 양방향 회원 격리, 비밀번호 해시, 세션 폐기·만료, 내보내기, 계정 삭제, 관찰 규칙·동시 저장·집계를 검사합니다. 운영 사이트로 요청하지 않으며, 임시 로컬 D1이 이미 있으면 덮어쓰지 않고 중단합니다. 검사 뒤 임시 DB를 지웁니다.
 
-## 검증
+증거는 `work/t07-evidence/`에 생성됩니다. 제출용으로 확인·복사한 기록은 `evidence/t07/`에 있습니다. 가려진 요청·응답과 임시 테스트 계정의 해시만 포함하며, 실제 5일 기록이 아닙니다.
 
-- `node tests/api.mjs http://localhost:5173`: 로컬 전용 API 검증. QA 계획과 기록을 생성하므로 운영 URL에서 실행하지 마세요.
-- `node --experimental-strip-types tests/stats.mjs`: 집계 계산 검증.
-- `node scripts/export-source.mjs`: 공개할 소스 JSON 생성. 이 작업 후 빌드합니다.
+기존 `tests/api.mjs`는 인증 전 T06용입니다. 현재 T07 검증에는 `tests/verify-t07.mjs`를 사용합니다. 공개 소스 파일을 갱신하려면 `node scripts/export-source.mjs` 실행 후 다시 빌드합니다.
 
-스키마는 `contracts/pds-schema-v2.json`, 제출 문구 초안은 `SUBMISSION.md`에 있습니다. 앱 초기 자료는 사용자가 정한 계획 1개와 할 일 6개입니다. 실제 실행 기록은 사용자가 직접 작성해야 합니다.
+`.env`, 세션, 운영 DB, 작업 파일은 Git 및 공개 소스에 넣지 않습니다. 기존 T06 자료는 사용자가 계정 설정에서 소유자 확인을 마친 뒤 가져올 수 있습니다.

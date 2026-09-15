@@ -1,0 +1,132 @@
+{
+  "note": "LOCAL SYNTHETIC TEST ONLY: dates altered in local DB. Not real five-day usage evidence.",
+  "checks": [
+    {
+      "path": "/api/auth",
+      "action": "signup",
+      "status": 201
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "action": "start",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "start",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 400
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 400
+    },
+    {
+      "path": "/api/observation",
+      "action": "change",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "action": "change",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 200
+    },
+    {
+      "path": "/api/observation",
+      "action": "day",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "action": "change",
+      "status": 409
+    },
+    {
+      "path": "/api/observation",
+      "status": 200
+    },
+    {
+      "path": "/api/diary",
+      "status": 401
+    },
+    {
+      "path": "/api/auth",
+      "action": "login",
+      "status": 200
+    },
+    {
+      "path": "/api/auth",
+      "action": "delete",
+      "status": 200
+    }
+  ],
+  "arithmetic": {
+    "values": [
+      2,
+      4,
+      3,
+      4,
+      5
+    ],
+    "sum": 18,
+    "average": 3.6,
+    "before": 3,
+    "after": 4
+  },
+  "expiredSessionRejected": true,
+  "deletedAccountHasNoObservationRows": true
+}
