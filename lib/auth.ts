@@ -11,7 +11,7 @@ export function sessionValue(request:Request){return request.headers.get('cookie
 export async function userFor(request:Request){const token=sessionValue(request);if(!/^[a-f0-9]{64}$/.test(token))return null;return await database().prepare('SELECT u.id,u.username,s.expires_at FROM auth_sessions s JOIN auth_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?').bind(await digest(token),new Date().toISOString()).first<{id:string;username:string;expires_at:string}>()}
 export async function requireUser(request:Request){const user=await userFor(request);if(!user)throw new HttpError(401,'로그인이 필요해요. 다시 로그인해 주세요.');return user}
 export function sameOrigin(request:Request){if(request.headers.get('origin')!==new URL(request.url).origin)throw new HttpError(403,'이 다이어리 화면에서 다시 시도해 주세요.')}
-export async function jsonBody(request:Request){sameOrigin(request);const text=await request.text();if(new TextEncoder().encode(text).length>32000)throw new HttpError(413,'입력 내용이 너무 길어요.');try{return JSON.parse(text)}catch{throw new HttpError(400,'입력 내용을 확인해 주세요.')}}
+export async function jsonBody(request:Request){sameOrigin(request);const text=await request.text();if(new TextEncoder().encode(text).length>32000)throw new HttpError(413,'입력 내용이 너무 길어요.');try{const body=JSON.parse(text);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error('invalid');return body}catch{throw new HttpError(400,'입력 내용을 확인해 주세요.')}}
 export function validPassword(p:unknown):p is string{return typeof p==='string'&&p.length>=12&&new TextEncoder().encode(p).length<=72}
 export const hashPassword=(p:string)=>bcrypt.hash(p,12);
 export const verifyPassword=(p:string,h:string)=>bcrypt.compare(p,h);
